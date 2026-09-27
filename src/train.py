@@ -62,7 +62,7 @@ def train(splits: dict, hidden: int = HIDDEN, dropout: float = DROPOUT, lr: floa
         history["val_log_loss"].append(val_loss)
         if verbose:
             val_acc = accuracy_metric(y_val_np, p_val)
-            print(f"epoca {epoch:3d}  train loss {train_loss:.4f}  val log-loss {val_loss:.4f}  val acc {val_acc:.4f}")
+            print(f"epoch {epoch:3d}  train loss {train_loss:.4f}  val log-loss {val_loss:.4f}  val acc {val_acc:.4f}")
 
         if val_loss < best_loss:
             best_loss, best_epoch, epochs_no_improve = val_loss, epoch, 0
@@ -73,7 +73,7 @@ def train(splits: dict, hidden: int = HIDDEN, dropout: float = DROPOUT, lr: floa
                 break
 
     if verbose:
-        print(f"Migliore epoca: {best_epoch} (val log-loss {best_loss:.4f})")
+        print(f"Best epoch: {best_epoch} (val log-loss {best_loss:.4f})")
     model.load_state_dict(best_state)
     return model, history
 
@@ -85,14 +85,14 @@ if __name__ == "__main__":
     xa_val, xb_val, c_val, y_val = to_tensors(splits["val"])
     p_ab = predict(model, xa_val, xb_val, c_val)
     p_ba = predict(model, xb_val, xa_val, c_val)
-    assert np.allclose(p_ab + p_ba, 1, atol=1e-5), "Antisimmetria violata"
+    assert np.allclose(p_ab + p_ba, 1, atol=1e-5), "Antisymmetry violated"
 
-    print("\nValidation (pesi migliori):")
+    print("\nValidation (best weights):")
     for k, v in evaluate(y_val.numpy(), p_ab).items():
         print(f"  {k:9s} {v:.4f}")
-    print("  riferimento regressione logistica: log-loss 0.6061, accuracy 0.6522")
+    print("  logistic regression reference: log-loss 0.6061, accuracy 0.6522")
 
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
     torch.save(model.state_dict(), MODELS_DIR / "net.pt")
     pd.DataFrame(history).to_csv(MODELS_DIR / "history.csv", index_label="epoch")
-    print(f"Pesi e storico salvati in {MODELS_DIR}")
+    print(f"Weights and history saved to {MODELS_DIR}")

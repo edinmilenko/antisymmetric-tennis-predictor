@@ -37,7 +37,7 @@ def per_sample_log_loss(y: np.ndarray, p: np.ndarray) -> np.ndarray:
 
 
 def bootstrap_diff(y, p_1, p_2, n_boot: int = 2000, seed: int = SEED) -> tuple[float, float, float]:
-    """Differenza media di log-loss (modello 1 - modello 2) e IC 95%. Negativa = modello 1 migliore."""
+    """Mean log-loss difference (model 1 - model 2) and 95% CI. Negative = model 1 is better."""
     d = per_sample_log_loss(y, p_1) - per_sample_log_loss(y, p_2)
     rng = np.random.default_rng(seed)
     idx = rng.integers(0, len(d), size=(n_boot, len(d)))
@@ -57,13 +57,13 @@ def breakdown(split: dict, probs: dict, by: str) -> pd.DataFrame:
 
 def plot_calibration(y: np.ndarray, probs: dict, path) -> None:
     fig, ax = plt.subplots(figsize=(5, 5))
-    ax.plot([0, 1], [0, 1], "--", color="gray", label="calibrazione perfetta")
+    ax.plot([0, 1], [0, 1], "--", color="gray", label="perfect calibration")
     for name, p in probs.items():
         frac_pos, mean_pred = calibration_curve(y, p, n_bins=10, strategy="quantile")
         ax.plot(mean_pred, frac_pos, marker="o", label=name)
-    ax.set_xlabel("probabilità prevista che vinca A")
-    ax.set_ylabel("frequenza osservata")
-    ax.set_title("Calibrazione sul test 2025")
+    ax.set_xlabel("predicted probability that A wins")
+    ax.set_ylabel("observed frequency")
+    ax.set_title("Calibration on the 2025 test set")
     ax.legend()
     fig.tight_layout()
     fig.savefig(path, dpi=150)
@@ -73,11 +73,11 @@ def plot_calibration(y: np.ndarray, probs: dict, path) -> None:
 def plot_learning_curve(path) -> None:
     h = pd.read_csv(MODELS_DIR / "history.csv")
     fig, ax = plt.subplots(figsize=(6, 4))
-    ax.plot(h["epoch"] + 1, h["train_loss"], label="train (con dropout)")
+    ax.plot(h["epoch"] + 1, h["train_loss"], label="train (with dropout)")
     ax.plot(h["epoch"] + 1, h["val_log_loss"], label="validation")
-    ax.set_xlabel("epoca")
+    ax.set_xlabel("epoch")
     ax.set_ylabel("log-loss")
-    ax.set_title("Curve di apprendimento")
+    ax.set_title("Learning curves")
     ax.legend()
     fig.tight_layout()
     fig.savefig(path, dpi=150)
@@ -107,7 +107,7 @@ if __name__ == "__main__":
     print(f"Test 2025 (n = {len(y)}):")
     print(table.round(4))
 
-    print("\nDifferenza di log-loss, rete meno altro modello (IC 95% bootstrap; negativa = rete migliore):")
+    print("\nLog-loss difference, net minus other model (95% bootstrap CI; negative = net is better):")
     for name, p_ref in [("elo_mix", p_mix), ("logistic", p_lr), ("gbm", p_gbm)]:
         mean, lo, hi = bootstrap_diff(y, p_net, p_ref)
         print(f"  net - {name:8s} {mean:+.4f}  [{lo:+.4f}, {hi:+.4f}]")
@@ -115,9 +115,9 @@ if __name__ == "__main__":
     probs = {"elo_mix": p_mix, "logistic": p_lr, "net": p_net}
     by_surface = breakdown(test, probs, "surface")
     by_level = breakdown(test, probs, "tourney_level")
-    print("\nPer superficie:")
+    print("\nBy surface:")
     print(by_surface.round(4).to_string(index=False))
-    print("\nPer livello del torneo:")
+    print("\nBy tournament level:")
     print(by_level.round(4).to_string(index=False))
 
     RESULTS_DIR.mkdir(exist_ok=True)
@@ -126,4 +126,4 @@ if __name__ == "__main__":
     by_level.to_csv(RESULTS_DIR / "test_by_level.csv", index=False)
     plot_calibration(y, probs, RESULTS_DIR / "calibration.png")
     plot_learning_curve(RESULTS_DIR / "learning_curve.png")
-    print(f"\nRisultati salvati in {RESULTS_DIR}")
+    print(f"\nResults saved to {RESULTS_DIR}")

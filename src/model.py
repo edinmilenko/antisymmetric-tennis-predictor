@@ -41,6 +41,6 @@ if __name__ == "__main__":
     print("shape:", tuple(logit_ab.shape))
     print("p(A,B) + p(B,A):", (p_ab + p_ba).tolist())
 
-    assert logit_ab.shape == (n,), "Forma dell'output sbagliata"
-    assert torch.allclose(p_ab + p_ba, torch.ones(n), atol=1e-6), "Antisimmetria violata"
+    assert logit_ab.shape == (n,), "Wrong output shape"
+    assert torch.allclose(p_ab + p_ba, torch.ones(n), atol=1e-6), "Antisymmetry violated"
     print("OK")

@@ -15,14 +15,14 @@ def clean_matches(df: pd.DataFrame) -> pd.DataFrame:
     df["retirement"] = df["score"].str.contains("RET|DEF", na=False)
 
     unclassified = set(df.columns) - set(PRE_MATCH_COLS) - set(POST_MATCH_COLS)
-    assert not unclassified, f"Colonne non classificate: {unclassified}"
+    assert not unclassified, f"Unclassified columns: {unclassified}"
 
     unknown_rounds = set(df["round"]) - set(ROUND_ORDER)
-    assert not unknown_rounds, f"Round non mappati: {unknown_rounds}"
+    assert not unknown_rounds, f"Unmapped rounds: {unknown_rounds}"
 
     key_cols = ["winner_id", "loser_id", "tourney_date", "tourney_id", "round", "surface"]
     missing = df[key_cols].isna().sum()
-    assert missing.sum() == 0, f"NaN in colonne chiave:\n{missing[missing > 0]}"
+    assert missing.sum() == 0, f"NaN in key columns:\n{missing[missing > 0]}"
 
     df = df.sort_values(
         by=["tourney_date", "tourney_id", "round"],
@@ -37,7 +37,7 @@ def main() -> None:
     df = compute_surface_elo(df)
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
     df.to_parquet(PROCESSED_DIR / "matches.parquet", index=False)
-    print(f"Salvati {len(df)} match in {PROCESSED_DIR / 'matches.parquet'}")
+    print(f"Saved {len(df)} matches to {PROCESSED_DIR / 'matches.parquet'}")
 
 
 if __name__ == "__main__":

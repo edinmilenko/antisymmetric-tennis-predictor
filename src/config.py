@@ -46,24 +46,24 @@ POST_MATCH_COLS = (
     + [f"{side}_{stat}" for side in ("w", "l") for stat in SERVE_STATS]
 )
 
-FORM_HALFLIFE = 10    # in numero di match
+FORM_HALFLIFE = 10    # in number of matches
 STATS_HALFLIFE = 20
 SURFACES = ["Hard", "Clay", "Grass", "Carpet"]
 LEVELS = ["G", "M", "A", "F", "O"]
 
-# Feature per giocatore: nel DataFrame compaiono con prefisso winner_ / loser_
+# Per-player features: in the DataFrame they appear with a winner_ / loser_ prefix
 PLAYER_FEATURES = [
-    # Elo ed esperienza
+    # Elo and experience
     "elo", "elo_surface", "n_matches",
     # Ranking
     "log_rank", "unranked", "log_rank_points",
-    # Attributi fisici ed entry
+    # Physical attributes and entry
     "age", "ht", "ht_missing", "is_left", "is_qualifier", "is_wildcard", "is_seeded",
-    # Forma
+    # Form
     "form", "form_surface",
-    # Servizio e risposta
+    # Serve and return
     "serve_won", "return_won", "first_in", "first_won", "second_won", "bp_saved", "ace_rate", "df_rate",
-    # Fatica e attività
+    # Fatigue and activity
     "tourney_matches", "tourney_minutes", "days_since_last_tourney",
     # Head-to-head
     "h2h_matches", "h2h_wins",

@@ -78,7 +78,7 @@ def compute_surface_elo(df: pd.DataFrame) -> pd.DataFrame:
 
 def main():
     data = {
-        # Info Torneo
+        # Tournament info
         "tourney_id": ["2024-0410", "2024-0410", "2024-0019", "2024-0019"],
         "tourney_name": [
             "Miami Masters",
@@ -91,7 +91,7 @@ def main():
         "tourney_level": ["M", "M", "G", "G"],  # M = Masters 1000, G = Grand Slam
         "tourney_date": [20240318, 20240318, 20240115, 20240115],  # YYYYMMDD
         "match_num": [101, 102, 201, 202],
-        # Dati Vincitore
+        # Winner data
         "winner_id": [206173, 207989, 206173, 207989],
         "winner_seed": [2, 1, 4, 2],
         "winner_entry": [None, None, None, None],
@@ -105,7 +105,7 @@ def main():
         "winner_ht": [188, 183, 188, 183],
         "winner_ioc": ["ITA", "ESP", "ITA", "ESP"],
         "winner_age": [22.6, 20.9, 22.4, 20.7],
-        # Dati Perdente
+        # Loser data
         "loser_id": [106421, 106421, 106421, 206173],
         "loser_seed": [3, 3, 3, 4],
         "loser_entry": [None, None, None, None],
@@ -119,7 +119,7 @@ def main():
         "loser_ht": [198, 198, 198, 188],
         "loser_ioc": ["RUS", "RUS", "RUS", "ITA"],
         "loser_age": [28.1, 28.1, 27.9, 22.4],
-        # Dati Match
+        # Match data
         "score": [
             "6-1 6-2",
             "6-4 6-3",
@@ -129,7 +129,7 @@ def main():
         "best_of": [3, 3, 5, 5],
         "round": ["SF", "F", "F", "SF"],
         "minutes": [69, 85, 224, 190],
-        # Statistiche di servizio Vincitore
+        # Winner serve stats
         "w_ace": [7, 5, 14, 9],
         "w_df": [1, 2, 3, 4],
         "w_svpt": [52, 60, 145, 120],
@@ -139,7 +139,7 @@ def main():
         "w_SvGms": [8, 10, 22, 19],
         "w_bpSaved": [2, 1, 6, 4],
         "w_bpFaced": [3, 2, 9, 6],
-        # Statistiche di servizio Perdente
+        # Loser serve stats
         "l_ace": [3, 4, 11, 6],
         "l_df": [6, 3, 5, 2],
         "l_svpt": [58, 65, 150, 118],

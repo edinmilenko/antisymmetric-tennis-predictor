@@ -13,7 +13,7 @@ from baselines import fit_logistic, diff_features
 RESULTS_DIR = ROOT / "results"
 SEEDS = [0, 1]
 
-# Ordine usato nell'ablation cumulativa
+# Order used in the cumulative ablation
 GROUPS = {
     "elo": ["elo", "elo_surface", "n_matches"],
     "ranking": ["log_rank", "unranked", "log_rank_points"],
@@ -25,9 +25,20 @@ GROUPS = {
     "h2h": ["h2h_matches", "h2h_wins"],
 }
 
+# Display labels for the groups in the plot and CSVs
+GROUP_LABELS = {
+    "elo": "Elo & experience",
+    "ranking": "ranking",
+    "forma": "form",
+    "servizio_risposta": "serve & return",
+    "fatica_attivita": "fatigue & activity",
+    "fisico_entry": "physical & entry",
+    "h2h": "head-to-head",
+}
+
 
 def subset(split: dict, features: list[str]) -> dict:
-    """Stesso split con solo alcune feature dei giocatori (il contesto resta intero)."""
+    """Same split with only some of the player features (the context is kept whole)."""
     idx = [PLAYER_FEATURES.index(f) for f in features]
     out = dict(split)
     out["X_A"] = split["X_A"][:, idx]
@@ -56,12 +67,12 @@ def plot_ablation(cumulative: pd.DataFrame, path) -> None:
     fig, ax = plt.subplots(figsize=(7, 4))
     x = np.arange(len(cumulative))
     ax.errorbar(x, cumulative["net_log_loss"], yerr=cumulative["net_log_loss_std"],
-                marker="o", capsize=3, label="rete (media su 2 seed)")
-    ax.plot(x, cumulative["lr_log_loss"], marker="s", label="regressione logistica")
+                marker="o", capsize=3, label="network (mean over 2 seeds)")
+    ax.plot(x, cumulative["lr_log_loss"], marker="s", label="logistic regression")
     ax.set_xticks(x)
     ax.set_xticklabels(cumulative["step"], rotation=30, ha="right")
-    ax.set_ylabel("log-loss di validation")
-    ax.set_title("Ablation cumulativa dei gruppi di feature")
+    ax.set_ylabel("validation log-loss")
+    ax.set_title("Cumulative ablation of feature groups")
     ax.legend()
     fig.tight_layout()
     fig.savefig(path, dpi=150)
@@ -71,13 +82,13 @@ def plot_ablation(cumulative: pd.DataFrame, path) -> None:
 if __name__ == "__main__":
     splits, _ = make_splits()
     all_features = [f for feats in GROUPS.values() for f in feats]
-    assert sorted(all_features) == sorted(PLAYER_FEATURES), "I gruppi non coprono esattamente tutte le feature"
+    assert sorted(all_features) == sorted(PLAYER_FEATURES), "The groups do not cover exactly all the features"
 
-    # 1. Ablation cumulativa
+    # 1. Cumulative ablation
     rows, used = [], []
     for i, (group, feats) in enumerate(GROUPS.items()):
         used = used + feats
-        label = group if i == 0 else f"+ {group}"
+        label = GROUP_LABELS[group] if i == 0 else f"+ {GROUP_LABELS[group]}"
         lr_m = run_logistic(splits, used)
         net_m = run_net(splits, used)
         rows.append({
@@ -86,25 +97,25 @@ if __name__ == "__main__":
             "net_log_loss": net_m["log_loss"], "net_log_loss_std": net_m["log_loss_std"],
             "net_accuracy": net_m["accuracy"],
         })
-        print(f"{label:22s} LR {lr_m['log_loss']:.4f}   rete {net_m['log_loss']:.4f}")
+        print(f"{label:22s} LR {lr_m['log_loss']:.4f}   net {net_m['log_loss']:.4f}")
     cumulative = pd.DataFrame(rows)
 
-    # 2. Leave-one-group-out (solo regressione logistica)
+    # 2. Leave-one-group-out (logistic regression only)
     full = run_logistic(splits, PLAYER_FEATURES)["log_loss"]
     loo = []
     for group, feats in GROUPS.items():
         kept = [f for f in PLAYER_FEATURES if f not in feats]
         loss = run_logistic(splits, kept)["log_loss"]
-        loo.append({"gruppo_tolto": group, "lr_log_loss": loss, "delta": loss - full})
+        loo.append({"group_removed": GROUP_LABELS[group], "lr_log_loss": loss, "delta": loss - full})
     loo = pd.DataFrame(loo).sort_values("delta", ascending=False)
 
-    print("\nAblation cumulativa (validation 2024):")
+    print("\nCumulative ablation (validation 2024):")
     print(cumulative.round(4).to_string(index=False))
-    print(f"\nLeave-one-group-out (LR con tutte le feature: {full:.4f}; delta > 0 = il gruppo serve):")
+    print(f"\nLeave-one-group-out (LR with all features: {full:.4f}; delta > 0 = the group helps):")
     print(loo.round(4).to_string(index=False))
 
     RESULTS_DIR.mkdir(exist_ok=True)
     cumulative.to_csv(RESULTS_DIR / "ablation_cumulative.csv", index=False)
     loo.to_csv(RESULTS_DIR / "ablation_leave_one_out.csv", index=False)
     plot_ablation(cumulative, RESULTS_DIR / "ablation.png")
-    print(f"\nRisultati salvati in {RESULTS_DIR}")
+    print(f"\nResults saved to {RESULTS_DIR}")

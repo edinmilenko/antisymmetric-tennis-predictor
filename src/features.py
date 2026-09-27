@@ -6,7 +6,7 @@ from config import (
     PLAYER_FEATURES, CONTEXT_FEATURES,
 )
 
-# Nomi Elo uniformati alla convenzione winner_<feature> / loser_<feature>
+# Elo names aligned with the winner_<feature> / loser_<feature> convention
 ELO_RENAME = {
     "elo_winner_pre_match": "winner_elo",
     "elo_loser_pre_match": "loser_elo",
@@ -16,7 +16,7 @@ ELO_RENAME = {
     "n_matches_loser_pre": "loser_n_matches",
 }
 
-# Feature calcolate nel formato lungo (sottoinsieme di PLAYER_FEATURES)
+# Features computed in the long format (subset of PLAYER_FEATURES)
 HISTORY_FEATURES = [
     "form", "form_surface",
     "serve_won", "return_won", "first_in", "first_won", "second_won", "bp_saved", "ace_rate", "df_rate",
@@ -25,10 +25,10 @@ HISTORY_FEATURES = [
 ]
 
 
-# ---------- Formato lungo (punto 7) ----------
+# ---------- Long format (step 7) ----------
 
 def _side_view(df: pd.DataFrame, me: str, opp: str, won: int) -> pd.DataFrame:
-    """Ogni match visto dal lato di un giocatore. me/opp: 'winner' o 'loser'."""
+    """Each match seen from one player's side. me/opp: 'winner' or 'loser'."""
     view = pd.DataFrame({
         "match_idx": df.index,
         "tourney_id": df["tourney_id"],
@@ -47,13 +47,13 @@ def _side_view(df: pd.DataFrame, me: str, opp: str, won: int) -> pd.DataFrame:
 
 
 def to_long(df: pd.DataFrame) -> pd.DataFrame:
-    """Formato lungo: due righe per match, una per giocatore, in ordine cronologico."""
+    """Long format: two rows per match, one per player, in chronological order."""
     winners = _side_view(df, "winner", "loser", 1)
     losers = _side_view(df, "loser", "winner", 0)
     long = pd.concat([winners, losers], ignore_index=True)
     long = long.sort_values("match_idx", kind="stable").reset_index(drop=True)
 
-    # Statistiche dei ritiri: parziali, quindi escluse dalle medie storiche
+    # Stats from retirements are partial, so they are excluded from the historical averages
     stat_cols = SERVE_STATS + [f"opp_{s}" for s in SERVE_STATS]
     long[stat_cols] = long[stat_cols].astype(float)
     long.loc[long["retirement"], stat_cols] = np.nan
@@ -61,23 +61,23 @@ def to_long(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def past_ewm(long: pd.DataFrame, col: str, halflife: float, by=("player_id",)) -> pd.Series:
-    """Media esponenziale di `col` sui match PRECEDENTI del gruppo (default: giocatore)."""
+    """Exponential average of `col` over the group's PREVIOUS matches (default: player)."""
     return long.groupby(list(by))[col].transform(
         lambda s: s.shift(1).ewm(halflife=halflife).mean()
     )
 
 
 def attach_to_matches(df: pd.DataFrame, long: pd.DataFrame, feature_cols: list[str]) -> pd.DataFrame:
-    """Riporta le feature del formato lungo sui match, con prefissi winner_/loser_."""
+    """Maps the long-format features back onto the matches, with winner_/loser_ prefixes."""
     w = long.loc[long["won"] == 1].set_index("match_idx")[feature_cols].add_prefix("winner_")
     l = long.loc[long["won"] == 0].set_index("match_idx")[feature_cols].add_prefix("loser_")
     return df.join(w).join(l)
 
 
-# ---------- Feature (punto 8) ----------
+# ---------- Features (step 8) ----------
 
 def add_static_player_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Attributi pre-match noti dal dataset: ranking, fisico, entry."""
+    """Pre-match attributes known from the dataset: ranking, physical, entry."""
     df = df.copy()
     for side in ("winner", "loser"):
         rank = df[f"{side}_rank"]
@@ -94,12 +94,12 @@ def add_static_player_features(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def add_context_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Contesto del match: round ordinale, superficie e livello in one-hot."""
+    """Match context: ordinal round, one-hot surface and level."""
     df = df.copy()
     unknown_surfaces = set(df["surface"]) - set(SURFACES)
-    assert not unknown_surfaces, f"Superfici non previste: {unknown_surfaces}"
+    assert not unknown_surfaces, f"Unexpected surfaces: {unknown_surfaces}"
     unknown_levels = set(df["tourney_level"]) - set(LEVELS)
-    assert not unknown_levels, f"Livelli non previsti: {unknown_levels}"
+    assert not unknown_levels, f"Unexpected levels: {unknown_levels}"
 
     df["round_ord"] = df["round"].map(ROUND_ORDER)
     for s in SURFACES:
@@ -110,7 +110,7 @@ def add_context_features(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _ratio_parts(long: pd.DataFrame) -> dict:
-    """Numeratore e denominatore di ogni statistica di servizio/risposta."""
+    """Numerator and denominator of each serve/return statistic."""
     L = long
     return {
         "serve_won": (L["1stWon"] + L["2ndWon"], L["svpt"]),
@@ -125,14 +125,14 @@ def _ratio_parts(long: pd.DataFrame) -> dict:
 
 
 def add_history_features(long: pd.DataFrame) -> pd.DataFrame:
-    """Feature storiche calcolate solo sui match precedenti di ogni giocatore."""
+    """Historical features computed only on each player's previous matches."""
     long = long.copy()
 
-    # Forma: win rate esponenziale, globale e per superficie
+    # Form: exponential win rate, overall and per surface
     long["form"] = past_ewm(long, "won", FORM_HALFLIFE)
     long["form_surface"] = past_ewm(long, "won", FORM_HALFLIFE, by=("player_id", "surface"))
 
-    # Servizio e risposta: EWM di numeratore e denominatore separati, poi rapporto
+    # Serve and return: separate EWMs of numerator and denominator, then the ratio
     for name, (num, den) in _ratio_parts(long).items():
         missing = num.isna() | den.isna()
         long["_num"] = num.mask(missing)
@@ -141,17 +141,17 @@ def add_history_features(long: pd.DataFrame) -> pd.DataFrame:
         long[name] = ratio.replace([np.inf, -np.inf], np.nan)
     long = long.drop(columns=["_num", "_den"])
 
-    # Fatica nel torneo corrente: match e minuti già giocati
+    # Fatigue in the current tournament: matches and minutes already played
     long["tourney_matches"] = long.groupby(["player_id", "tourney_id"]).cumcount()
     minutes = long["minutes"].fillna(0)
     long["tourney_minutes"] = minutes.groupby([long["player_id"], long["tourney_id"]]).cumsum() - minutes
 
-    # Head-to-head: incontri e vittorie contro questo avversario, prima del match
+    # Head-to-head: meetings and wins against this opponent, before the match
     g_h2h = long.groupby(["player_id", "opp_id"])
     long["h2h_matches"] = g_h2h.cumcount()
     long["h2h_wins"] = g_h2h["won"].cumsum() - long["won"]
 
-    # Inattività: giorni dal torneo precedente (massimo 365)
+    # Inactivity: days since the previous tournament (capped at 365)
     t = long.drop_duplicates(["player_id", "tourney_id"])[["player_id", "tourney_id", "tourney_date"]].copy()
     t["days_since_last_tourney"] = t.groupby("player_id")["tourney_date"].diff().dt.days
     long = long.merge(
@@ -163,7 +163,7 @@ def add_history_features(long: pd.DataFrame) -> pd.DataFrame:
 
 
 def feature_columns() -> list[str]:
-    """Tutte le colonne di input del modello."""
+    """All model input columns."""
     return [f"{side}_{f}" for side in ("winner", "loser") for f in PLAYER_FEATURES] + CONTEXT_FEATURES
 
 
@@ -177,13 +177,13 @@ def build_features(df: pd.DataFrame) -> pd.DataFrame:
     long = add_history_features(long)
 
     first = long.groupby("player_id").head(1)
-    assert first["form"].isna().all(), "Leakage: il primo match di un giocatore ha già una storia"
-    assert (first["h2h_matches"] == 0).all(), "Leakage negli head-to-head"
+    assert first["form"].isna().all(), "Leakage: a player's first match already has a history"
+    assert (first["h2h_matches"] == 0).all(), "Leakage in the head-to-heads"
 
     df = attach_to_matches(df, long, HISTORY_FEATURES)
 
     missing_cols = set(feature_columns()) - set(df.columns)
-    assert not missing_cols, f"Feature mancanti: {missing_cols}"
+    assert not missing_cols, f"Missing features: {missing_cols}"
     return df
 
 
@@ -193,6 +193,6 @@ if __name__ == "__main__":
     df.to_parquet(PROCESSED_DIR / "features.parquet", index=False)
 
     cols = feature_columns()
-    print(f"Salvate {len(cols)} feature per {len(df)} match")
-    print("Quota di NaN per feature (prime 10):")
+    print(f"Saved {len(cols)} features for {len(df)} matches")
+    print("Share of NaN per feature (top 10):")
     print(df[cols].isna().mean().sort_values(ascending=False).head(10))

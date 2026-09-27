@@ -5,7 +5,7 @@ from config import (
     TRAIN_START, VAL_YEAR, TEST_YEAR, SEED,
 )
 
-# Colonne non usate dal modello, conservate per analisi e baseline sul test
+# Columns not used by the model, kept for analysis and test-set baselines
 META_COLS = [
     "tourney_date", "tourney_name", "surface", "tourney_level", "round",
     "winner_name", "loser_name",
@@ -15,10 +15,10 @@ META_COLS = [
 
 
 def orient(df: pd.DataFrame, rng: np.random.Generator) -> dict:
-    """Assegna a caso chi è A e chi è B. y = 1 se vince A."""
+    """Randomly assigns who is A and who is B. y = 1 if A wins."""
     X_w = df[[f"winner_{f}" for f in PLAYER_FEATURES]].to_numpy(dtype=float)
     X_l = df[[f"loser_{f}" for f in PLAYER_FEATURES]].to_numpy(dtype=float)
-    flip = rng.random(len(df)) < 0.5  # True: A è il perdente
+    flip = rng.random(len(df)) < 0.5  # True: A is the loser
     return {
         "X_A": np.where(flip[:, None], X_l, X_w),
         "X_B": np.where(flip[:, None], X_w, X_l),
@@ -29,8 +29,8 @@ def orient(df: pd.DataFrame, rng: np.random.Generator) -> dict:
 
 
 class Preprocessor:
-    """Imputazione con mediane e standardizzazione, stimate SOLO sul train.
-    A e B condividono gli stessi parametri, perché la rete userà gli stessi pesi per entrambi."""
+    """Median imputation and standardization, fitted ONLY on train.
+    A and B share the same parameters, because the network uses the same weights for both."""
 
     def fit(self, split: dict) -> "Preprocessor":
         players = np.vstack([split["X_A"], split["X_B"]])
@@ -80,5 +80,5 @@ if __name__ == "__main__":
     for name, s in splits.items():
         n_nan = sum(int(np.isnan(s[k]).sum()) for k in ("X_A", "X_B", "C"))
         years = s["meta"]["tourney_date"].dt.year
-        print(f"{name:5s}  n={len(s['y']):6d}  anni {years.min()}-{years.max()}  "
-              f"quota A vince={s['y'].mean():.3f}  NaN={n_nan}")
+        print(f"{name:5s}  n={len(s['y']):6d}  years {years.min()}-{years.max()}  "
+              f"share A wins={s['y'].mean():.3f}  NaN={n_nan}")

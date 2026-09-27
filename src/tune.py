@@ -30,7 +30,7 @@ if __name__ == "__main__":
             metrics = evaluate(y_val, predict(model, xa_val, xb_val, c_val))
             rows.append({**params, "seed": seed, "epochs": len(history["val_log_loss"]), **metrics})
         mean_loss = np.mean([r["log_loss"] for r in rows[-len(SEEDS):]])
-        print(f"[{i:2d}/{len(combos)}] {params}  log-loss medio {mean_loss:.4f}")
+        print(f"[{i:2d}/{len(combos)}] {params}  mean log-loss {mean_loss:.4f}")
 
     runs = pd.DataFrame(rows)
     summary = (
@@ -38,7 +38,7 @@ if __name__ == "__main__":
         .agg(["mean", "std"])
         .sort_values(("log_loss", "mean"))
     )
-    print("\nMigliori 10 configurazioni (media sui seed):")
+    print("\nTop 10 configurations (mean over seeds):")
     print(summary.round(4).head(10))
 
     results_dir = ROOT / "results"
